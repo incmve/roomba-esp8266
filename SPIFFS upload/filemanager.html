@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <script src="/js/insert.js"></script>
+      <title>Roombot</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="stylesheet" href="/css/bootstrap-extra.css">
+<script type="text/javascript">
+// Plain JS to show header when no JQuery available
+window.onload = function() {
+	if (!window.jQuery){
+		document.getElementById("loading").style.display = "none";
+		document.getElementById("header").style.display = "block";
+	}
+
+	// If browser is not Android, convert clickable submenu into hover submenu
+	var ua = navigator.userAgent.toLowerCase();
+	var isAndroid = ua.indexOf("android") > -1;
+	if(!isAndroid){
+		var sheet = document.createElement("style")		
+		sheet.innerHTML = ".dropdown-submenu:hover>.dropdown-menu { display: block; }";
+		document.body.appendChild(sheet);
+	}
+}
+
+// Jquery functions
+$( document ).ready(function() {
+	var WaitForReboot = 0;
+	setInterval(CheckReboot, 2000);
+
+	// Make submenu clickable
+	$(".dropdown-submenu>a").unbind("click").click(function(e){
+		$(this).next("ul").toggle();
+		e.stopPropagation();
+		e.preventDefault();
+	});
+	// Allways start with 'RefreshData' to collect data with JQuery
+	// When finished, show full page
+	RefreshData();
+	$("#header").show();
+	$("#loading").hide();
+
+	// RefreshData function, the URL and Succes are different for every page
+	function RefreshData(){
+		$.ajax
+		({
+			type: "GET",
+			url: "/filemanager_ajax",
+			data: "",
+			cache: false,
+			success: function(html)
+			{
+				var values = html.split("____");
+				$("#files").html(values[0]);
+
+				// Retrieve errors from ESP and show them on the page
+				if (values[1] == "1")  // error wifi
+				{
+					$("#error1").html('<div class="bs-example" id="errorblock1" style="display: none;"><div class="alert alert-danger fade in" id="alert"><a href="#" class="close" data-dismiss="alert">&times;</a><strong>Error!</strong> Could not connect to preferred WiFi network. Please check your network and WiFi settings.</div></div>');
+					$("#errorblock1").show();
+					$.ajax({type: "GET",url: "/api",data: {action:"clearerror",value:"wifi"},cache: false})
+				}
+				if (values[2] == "1")  // error eeprom
+				{
+					$("#error2").html('<div class="bs-example" id="errorblock2" style="display: none;"><div class="alert alert-danger fade in" id="alert"><a href="#" class="close" data-dismiss="alert">&times;</a><strong>Error!</strong> Eeprom values are inconsistent. please re-save all your settings.</div></div>');
+					$("#errorblock2").show();
+					$.ajax({type: "GET",data: {action:"clearerror",value:"eeprom"},url: "/api",cache: false})
+					}
+				if (values[4] == "1")  // Upgrade message
+				{
+					$("#error4").html('<div class="bs-example" id="errorblock4" style="display: none;"><div class="alert alert-success fade in" id="alert"><a href="#" class="close" data-dismiss="alert">&times;</a><strong>Succes!</strong> Succesfully installed new ESPimatic version</div></div>');
+					$("#errorblock4").show();
+					$.ajax({type: "GET",data: {action:"clearerror",value:"upgrade"},url: "/api",cache: false})
+				}
+			}
+		});
+	};
+
+	
+$("#files_form").submit(function(event) {
+event.preventDefault();
+var sel = $( "#files" ).val();
+//alert(sel);
+	$('#file').val(sel);
+});
+	
+	
+	
+	// Function to submit (save) form data to ESP. Depending on the settings the ESP might reboot, then we have to trigger the CheckReboot function
+	$("#files_form").submit(function(event) {
+		event.preventDefault();
+		$("#ds18b20_form").hide();
+		$("#header").hide();
+		$("#saving").show();
+		var values = $(this).serialize();
+		$.ajax
+		({
+			url: "/ds18b20_ajax",
+			type: "post",
+			data: values,
+			success: function(html)
+			{
+				$("#saving").hide();
+				$("#reboot").show();
+				WaitForReboot = 1;
+			}
+		});
+	});
+	
+	// Function to send Reboot command to ESP and wait to come back online. Triggered after pushing the red 'Reboot' button from the modal popup
+	function DoReboot(){
+		$("#header").hide();
+		$("#reboot").show();
+		$("#ds18b20_form").hide();
+		WaitForReboot = 1;
+		$.ajax
+		({type: "GET",url: "/api",data: {action:"reboot",value:"true"},cache: false})
+	};
+	
+	// Function send Reset command (clear EEPROM) to ESP. Triggered after pushing the red 'Reset' button from the modal popup
+	function DoReset(){
+		$("#header").hide();
+		$("#reboot").show();
+		$("#ds18b20_form").hide();
+		WaitForReboot = 1;
+		$.ajax
+		({type: "GET",url: "/api",data: {action:"reset",value:"true"},cache: false})
+	};
+	
+	// Function send File Delete command (delete from SPIFFS) to ESP. Triggered after pushing the red 'Delete' button from the modal popup
+	function DoDelete(){
+		var DeleteFile = $('#files').find(":selected").text();
+		$("#header").hide();
+		$("#loading").show();
+		$.ajax
+		({
+			url: "/delete",
+			type: "GET",
+			data: {path:DeleteFile},
+			success: function(html)
+			{
+				RefreshData();
+				$("#header").show();
+				$("#loading").hide();
+	
+			}
+		});
+	};
+
+	// When a link to the modal-dialog is pressed, configure text and buttons. This is for reset
+	$("#DoReset").click(function(event){
+		event.preventDefault();
+		$(".modal-title1").html("Confirm factory reset");
+		$("#modal-body-text").html("Are you sure you want to reset?<br>This will erase all settings, including wifi. This option is irreversible.");
+		$("#DoFunction").html("Reset");
+		$("#DoFunction").attr("title", "DoReset");
+	});
+
+	// When a link to the modal-dialog is pressed, configure text and buttons. This is for reboot
+	$("#DoReboot").click(function(event){
+		event.preventDefault();
+		$(".modal-title1").html("Confirm Reboot");
+		$("#modal-body-text").html("Are you sure yout want to reboot?");
+		$("#DoFunction").html("Reboot");
+		$("#DoFunction").attr("title", "DoReboot");
+	});
+
+	// When a link to the modal-dialog is pressed, configure text and buttons. This is for delete
+	$("#DoDelete").click(function(event){
+		event.preventDefault();
+		var DeleteFile = $('#files').find(":selected").text();
+		$(".modal-title1").html("Confirm file delete");
+		$("#modal-body-text").html("Are you sure you want to delete '" + DeleteFile + "' ?<br>This will erase the file permanently. This option is irreversible.");
+		$("#DoFunction").html("Delete");
+		$("#DoFunction").attr("title", "DoDelete");
+	});
+	
+	// Function to figure out what exactly is confirmed in the modal-dialog, redirect to corresponding function
+	$("#DoFunction").click(function(){
+		$("#modal-dialog").modal("hide");
+		var linkTitle = $("#DoFunction").attr("title");
+		if (linkTitle == "DoReboot") { DoReboot(); }
+		if (linkTitle == "DoReset") { DoReset(); }
+		if (linkTitle == "DoDelete") { DoDelete(); }
+	});
+
+	// When the 'Refresh' button is pressed, refresh all data from ESP
+	$("#refresh").click(function(){RefreshData();});
+
+	$("#upload_file").submit(function(event) {
+		event.preventDefault();
+		$("#header").hide();
+		$("#loading").show();
+		$.ajax
+		({
+			url: '/fupload2',
+			type: 'POST',
+			data: new FormData( this ),
+			processData: false,
+			contentType: false,
+					success: function(html)
+					{
+						RefreshData();
+						$("#loading").hide();
+						$("#header").show();
+					}
+			});
+		});
+	
+	// Function to poll the ESP after a reboot command. Should Refresh data when back online again and disable polling
+	function CheckReboot(){
+		if (WaitForReboot == 1)
+		{$.ajax({url: "/ping",type: "GET",data: "",success: function(html)
+			{
+				WaitForReboot = 0;
+				$("#loading").show();
+				$("#reboot").hide();
+				RefreshData();
+				$("#loading").hide();
+				$("#header").show();
+				$("#ds18b20_form").show();
+			}
+			});	
+		}
+	};
+});
+
+    </script>    
+   </head>
+   <body>
+	
+	<div id="modal-dialog" class="modal fade">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title1">title</h4>
+				</div>
+				<div class="modal-body">
+					<p id="modal-body-text">question</p>
+					<p class="debug-url"></p>
+				</div>
+				<div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-danger btn-ok" id="DoFunction">yes</a>
+                </div>
+			</div>
+		</div>
+	</div>	  
+	<p id="error1"></p><p id="error2"></p><p id="error3"></p><p id="error4"></p>
+      <div class="container">
+      <div id="loading" class="row"><div class="col-md-4"><div class="page-header"><span class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span> Loading . . .</div></div></div>
+        <div id="reboot" class="page-header" style="display: none;">
+			<span class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span> Rebooting, please wait . . .
+		</div>
+      <div id="header" class="row" style="display: none;">
+      <div class="col-md-4">
+         <div class="page-header">
+            <h1>Files</h1>
+         </div>
+            <form id="files_form" action="#" method="POST" style="display: snone;">
+         <div class="panel panel-default">
+                  <div class="panel-body">
+                     <input type="hidden" name="form" value="fdelete">
+                     <div class="form-group">
+                        <div class="input-group">
+                           <span class="input-group-addon">Files: </span>
+                           <select class="form-control" name="files" id="files">
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="panel-footer clearfix">
+                     <div class="pull-right"><button type="submit" class="btn btn-default" value="fdelete" data-toggle="modal" data-target="#modal-dialog" id="DoDelete"  >Delete</button></div>
+                  </div>
+				  </form>
+         </div>
+      </div>
+      <div class="col-md-4">
+         <div class="page-header">
+            <h1>Upload</h1>
+      </div>
+			<div id='loading' class='page-header' style='display: none;'><span class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span> Loading . . .
+		</div>
+            <form id='upload_file' action='/fupload2' method='POST' enctype='multipart/form-data'>
+               <div class='panel panel-default'>
+                  <div class='panel-body'>
+                     <input type='hidden' name='form' value='wifi'>
+                     <div class='form-group'>
+                        <div class='input-group'><span class='input-group-addon' id='basic-addon1'>Select file </span><button class="btn btn-default btn-file">browse<input type="file" name="fupload" multiple></button></div>
+                     </div>
+				</div>
+                  <div class='panel-footer clearfix'>
+                     <div class='pull-right'><button type='submit' class='btn btn-default' value='Update'>Upload</button></div>
+                  </div>
+               </div>
+            </form>
+            <div class='clearfix visible-lg'></div>
+	</div>
+	  </div>
+	  </div>
+   </body>
+</html>

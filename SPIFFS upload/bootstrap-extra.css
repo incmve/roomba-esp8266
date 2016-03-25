@@ -1,0 +1,83 @@
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+ left: 100%;
+ margin-top: -6px;
+  margin-left: -1px;
+  -webkit-border-radius: 0 6px 6px 6px;
+ -moz-border-radius: 0 6px 6px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu>a:after {
+ display: block;
+ content: " ";
+ float: right;
+ width: 0;
+ height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #ccc;
+ margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #fff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+ left: -100%;
+  margin-left: 10px;
+  -webkit-border-radius: 6px 0 6px 6px;
+ -moz-border-radius: 6px 0 6px 6px;
+  border-radius: 6px 0 6px 6px;
+}
+.glyphicon-refresh-animate {
+ -animation: spin .7s infinite linear;
+ -webkit-animation: spin2 .7s infinite linear;
+}
+@-webkit-keyframes spin2 {
+from {
+-webkit-transform: rotate(0deg);
+}
+to {
+-webkit-transform: rotate(360deg);
+}
+}
+@keyframes spin {
+from {
+transform: scale(1) rotate(0deg);
+}
+to {
+transform: scale(1) rotate(360deg);
+}
+}
+.bs-example{
+	margin: 20px;
+}
+select option[disabled] {
+	color: red;
+}
+.btn-file {
+    position: relative;
+    overflow: hidden;
+}
+.btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
