@@ -9,7 +9,7 @@
 #include "Base64.h"
 #include <FS.h>
 
-String roombotVersion = "0.3.2";
+String roombotVersion = "0.3.3";
 String WMode = "1";
 #define roombapin 2
 
@@ -326,15 +326,7 @@ String getContentType(String filename) {
 bool handleFileRead(String path)
 {
   Serial.println("handleFileRead: " + path);
-  if (path.endsWith("/")) path += "root.html";
-  if (path == "/js/insert.js" && BSlocal != "1")
-  {
-    path = "/js/insert-web.js";
-  }
-  if (path == "/js/insert.js" && BSlocal == "1")
-  {
-    path = "/js/insert-local.js";
-  }
+ 
 
 
   String contentType = getContentType(path);
