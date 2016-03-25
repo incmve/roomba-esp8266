@@ -9,7 +9,7 @@
 #include "Base64.h"
 #include <FS.h>
 
-String roombotVersion = "0.3.3";
+String roombotVersion = "0.3.4";
 String WMode = "1";
 #define roombapin 2
 
@@ -326,7 +326,7 @@ String getContentType(String filename) {
 bool handleFileRead(String path)
 {
   Serial.println("handleFileRead: " + path);
- 
+
 
 
   String contentType = getContentType(path);
@@ -532,6 +532,10 @@ void handle_roomba_start()
 }
 void handle_roomba_dock()
 {
+  Serial.write(128);
+  delay(50);
+  Serial.write(131);
+  delay(50);
   Serial.write(143);
   Serial.println("Thank you for letting me rest, going home master");
   handle_root();
