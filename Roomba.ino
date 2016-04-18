@@ -9,9 +9,13 @@
 #include "Base64.h"
 #include <FS.h>
 
-String roombotVersion = "0.3.4";
+String roombotVersion = "0.3.6";
 String WMode = "1";
-#define roombapin 2
+
+#define SERIAL_RX     D5  // pin for SoftwareSerial RX
+#define SERIAL_TX     D6  // pin for SoftwareSerial TX
+SoftwareSerial mySerial(SERIAL_RX, SERIAL_TX); // (RX, TX. inverted, buffer)
+
 
 // Div
 File UploadFile;
@@ -55,6 +59,8 @@ String host   = "192.168.x.x";
 const int httpPort    = 80;
 String Username     = "admin";
 String Password     = "password";
+String chargevar = "chargestatus";
+String distancevar = "distance";
 char authVal[40];
 char authValEncoded[40];
 String ClientIP;
@@ -66,7 +72,7 @@ char unameenc[BASE64_LEN];
 
 // HTML
 String header       =  "<html lang='en'><head><title>Roombot control panel</title><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css'><script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script><script src='http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js'></script></head><body>";
-String navbar       =  "<nav class='navbar navbar-default'><div class='container-fluid'><div class='navbar-header'><a class='navbar-brand' href='/'>Roombot control panel</a></div><div><ul class='nav navbar-nav'><li><a href='/'><span class='glyphicon glyphicon-question-sign'></span> Status</a></li><li class='dropdown'><a class='dropdown-toggle' data-toggle='dropdown' href='#'><span class='glyphicon glyphicon-cog'></span> Tools<span class='caret'></span></a><ul class='dropdown-menu'><li><a href='/updatefwm'>Firmware</a></li><li><a href='/filemanager.html'>File manager</a><a href='/fupload'>File upload</a><a href='/restart'>restart</a></li></ul></li><li><a href='https://github.com/incmve/roomba-eps8266/wiki' target='_blank'><span class='glyphicon glyphicon-question-sign'></span> Help</a></li></ul></div></div></nav>";
+String navbar       =  "<nav class='navbar navbar-default'><div class='container-fluid'><div class='navbar-header'><a class='navbar-brand' href='/'>Roombot control panel</a></div><div><ul class='nav navbar-nav'><li><a href='/'><span class='glyphicon glyphicon-info-sign'></span> Status</a></li><li class='dropdown'><a class='dropdown-toggle' data-toggle='dropdown' href='#'><span class='glyphicon glyphicon-cog'></span> Tools<span class='caret'></span></a><ul class='dropdown-menu'><li><a href='/updatefwm'><span class='glyphicon glyphicon-upload'></span> Firmware</a></li><li><a href='/filemanager.html'><span class='glyphicon glyphicon-file'></span> File manager</a></li><li><a href='/fupload'> File upload</a></li></ul></li><li><a href='https://github.com/incmve/roomba-eps8266/wiki' target='_blank'><span class='glyphicon glyphicon-question-sign'></span> Help</a></li></ul></div></div></nav>";
 String containerStart   =  "<div class='container'><div class='row'>";
 String containerEnd     =  "<div class='clearfix visible-lg'></div></div></div>";
 String siteEnd        =  "</body></html>";
@@ -121,6 +127,9 @@ void handle_root()
 void setup(void)
 {
   Serial.begin(115200);
+  mySerial.begin(115200);
+  pinMode(SERIAL_RX, INPUT);
+  pinMode(SERIAL_TX, OUTPUT);
   // Check if SPIFFS is OK
   if (!SPIFFS.begin())
   {
@@ -143,8 +152,6 @@ void setup(void)
     }
   }
   //mySerial.begin(115200);  // uncomment this line to use SoftSerial
-  pinMode(roombapin, OUTPUT); // sets the pins as output
-  digitalWrite(roombapin, LOW);
   WiFi.begin(ssid.c_str(), password.c_str());
   int i = 0;
   while (WiFi.status() != WL_CONNECTED && i < 31)
@@ -359,7 +366,9 @@ bool handleFileRead(String path)
 // LOOP
 void loop(void)
 {
-
+  if (mySerial.available()) {
+    Serial.print(mySerial.read());
+  }
   server.handleClient();
 
 }
@@ -513,30 +522,22 @@ void handle_filemanager_ajax()
 void handle_roomba_start()
 {
   Serial.println("Starting");
-  // digitalWrite(roombapin, HIGH); wakeup no longer needed newer roomba https://forum.arduino.cc/index.php?topic=168377.msg1254745#msg1254745
-  delay(2000);
-  // digitalWrite(roombapin, LOW);
+  mySerial.write(128);
   delay(50);
-  Serial.write(128);
-  //delay(50);
-  //Serial.write(129);
-  //Serial.write(11);
+  mySerial.write(131);
   delay(50);
-  Serial.write(131);
-  delay(50);
-  Serial.write(135);
+  mySerial.write(135);
   Serial.println("I will clean master");
-
-
   handle_root();
 }
+
 void handle_roomba_dock()
 {
-  Serial.write(128);
+  mySerial.write(128);
   delay(50);
-  Serial.write(131);
+  mySerial.write(131);
   delay(50);
-  Serial.write(143);
+  mySerial.write(143);
   Serial.println("Thank you for letting me rest, going home master");
   handle_root();
 }
@@ -546,7 +547,105 @@ void handle_esp_restart() {
   ESP.restart();
 }
 
-void handle_wifim_html()
-{
-  server.send ( 200, "text/html", "<form method='POST' action='/wifi_ajax'><input type='hidden' name='form' value='wifi'><input type='text' name='ssid'><input type='password' name='password'><input type='submit' value='Submit'></form><br<b>Enter WiFi credentials</b>");
+void handle_esp_charging() {
+  int charge = 0;
+ // int data;
+  mySerial.write(142);
+  delay(50);
+  mySerial.write(21);
+  delay(50);
+  if (mySerial.available()) {
+    charge = Serial.read();
+    Serial.println("..");
+    Serial.print(charge);
+    switch (charge) {
+    case 0:{ 
+      //do something when var equals 1
+            String data = String(charge);
+     handle_esp_pimatic(data, chargevar);
+      break;}
+    case 1:{
+      //do something when var equals 2
+            String data = String(charge);
+        handle_esp_pimatic(data, chargevar);
+      break;}
+      case 2:{
+      //do something when var equals 2
+            String data = String(charge);
+        handle_esp_pimatic(data, chargevar);
+      break;}
+      case 3:{
+      //do something when var equals 2
+            String data = String(charge);
+      handle_esp_pimatic(data, chargevar);
+      break;}
+      case 4:{
+      //do something when var equals 2
+            String data = String(charge);
+       handle_esp_pimatic(data, chargevar);
+      break;}
+      case 5:{
+      //do something when var equals 2
+         
+            String data = String(charge);
+            String variable = String(charge);
+      handle_esp_pimatic(data, chargevar);
+      
+      break;}
+    default: 
+      // if nothing else matches, do the default
+      // default is optional
+    break;
+  }
+  }
+  Serial.println("Charging status");
+}
+
+void handle_esp_distance() {
+  
+  mySerial.write(142);
+  delay(50);
+  mySerial.write(19);
+  delay(50);
+  if (mySerial.available()) {
+    Serial.println("..");
+    Serial.print(Serial.read());
+  }
+  String data = String(Serial.read());
+  Serial.println("Distance traveled");
+  handle_esp_pimatic(data, distancevar);
+}
+
+void handle_esp_pimatic(String data, String variable) {
+String yourdata;
+  char uname[BASE64_LEN];
+  String str = String(Username) + ":" + String(Password);
+  str.toCharArray(uname, BASE64_LEN);
+  memset(unameenc, 0, sizeof(unameenc));
+  base64_encode(unameenc, uname, strlen(uname));
+
+
+  yourdata = "{\"type\": \"value\", \"valueOrExpression\": \"" + data + "\"}";
+
+  client.print("PATCH /api/variables/");
+  client.print(variable);
+  client.print(" HTTP/1.1\r\n");
+  client.print("Authorization: Basic ");
+  client.print(unameenc);
+  client.print("\r\n");
+  client.print("Host: " + host +"\r\n");
+  client.print("Content-Type:application/json\r\n");
+  client.print("Content-Length: ");
+  client.print(yourdata.length());
+  client.print("\r\n\r\n");
+  client.print(yourdata);
+ 
+
+  delay(500);
+
+  // Read all the lines of the reply from server and print them to Serial
+  while (client.available()) {
+    String line = client.readStringUntil('\r');
+    //Serial.print(line);
+  }
 }
