@@ -39,9 +39,13 @@ String formatBytes(size_t bytes) {
 }
 
 // WIFI
-String ssid    = "ssid";
-String password = "password";
+String ssid    = "SSID";
+String password = "PASSWORD";
 String espName    = "Roombot";
+IPAddress ip(192, 168, 0, 177); 
+IPAddress dns(192, 168, 0, 1); 
+IPAddress gateway(192, 168, 0, 1); 
+IPAddress subnet(255, 255, 255, 0); 
 
 // webserver
 ESP8266WebServer  server(80);
@@ -55,12 +59,12 @@ const char *APpassword = "thereisnospoon";
 
 
 // Pimatic settings
-String host   = "192.168.x.x";
+String host   = "192.168.0.200";
 const int httpPort    = 80;
 String Username     = "admin";
-String Password     = "password";
-String chargevar = "chargestatus";
-String distancevar = "distance";
+String Password     = "xxxxxxx";
+String chargevar = "roombachargestatus";
+String distancevar = "roombadistance";
 char authVal[40];
 char authValEncoded[40];
 String ClientIP;
@@ -99,7 +103,7 @@ void handle_root()
 {
 
   // get IP
-  IPAddress ip = WiFi.localIP();
+  //IPAddress ip = WiFi.localIP();
   ClientIP = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
   delay(500);
 
@@ -151,6 +155,7 @@ void setup(void)
       FSUsed = fs_info.usedBytes;
     }
   }
+  WiFi.config(ip, dns, gateway, subnet); ;
   //mySerial.begin(115200);  // uncomment this line to use SoftSerial
   WiFi.begin(ssid.c_str(), password.c_str());
   int i = 0;
