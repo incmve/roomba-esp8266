@@ -629,6 +629,12 @@ base64 encoder;
   auth += ":";
   auth += Password;
 
+  if (!client.connect(host.c_str(), httpPort))
+  {
+    Serial.println("connection failed");
+    return;
+  }
+  
   yourdata = "{\"type\": \"value\", \"valueOrExpression\": \"" + data + "\"}";
 
   client.print("PATCH /api/variables/");
