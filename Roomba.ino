@@ -9,7 +9,7 @@
 #include "Base64.h"
 #include <FS.h>
 
-String roombotVersion = "0.3.6";
+String roombotVersion = "0.3.7";
 String WMode = "1";
 
 #define SERIAL_RX     D5  // pin for SoftwareSerial RX
@@ -622,8 +622,11 @@ String yourdata;
   String str = String(Username) + ":" + String(Password);
   str.toCharArray(uname, BASE64_LEN);
   memset(unameenc, 0, sizeof(unameenc));
-  base64_encode(unameenc, uname, strlen(uname));
-
+ // base64_encode(unameenc, uname, strlen(uname));
+base64 encoder;
+  String auth = Username;
+  auth += ":";
+  auth += Password;
 
   yourdata = "{\"type\": \"value\", \"valueOrExpression\": \"" + data + "\"}";
 
