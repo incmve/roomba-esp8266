@@ -92,7 +92,7 @@ String inputBodyStart   =  "<form action='' method='POST'><div class='panel pane
 String inputBodyName    =  "<div class='form-group'><div class='input-group'><span class='input-group-addon' id='basic-addon1'>";
 String inputBodyPOST    =  "</span><input type='text' name='";
 String inputBodyClose   =  "' class='form-control' aria-describedby='basic-addon1'></div></div>";
-String roombacontrol     =  "<a href='/roombastart'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-play' aria-hidden='true'></span> Start</button></a><a href='/roombadock'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-home' aria-hidden='true'></span> Dock</button></a></div>";
+String roombacontrol     =  "<a href='/roombastart'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-play' aria-hidden='true'></span> Start</button></a><a href='/roombastop'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-stop' aria-hidden='true'></span> Stop</button></a><a href='/roombaspot'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-cleaning' aria-hidden='true'></span> Spot</button></a><a href='/roombadock'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-home' aria-hidden='true'></span> Dock</button></a></div>";
 
 
 // ROOT page
@@ -203,6 +203,8 @@ void setup(void)
   server.on("/filemanager_ajax", handle_filemanager_ajax);
   server.on("/delete", handleFileDelete);
   server.on("/roombastart", handle_roomba_start);
+  server.on("/roombastop", handle_roomba_stop);
+  server.on("/roombaspot", handle_roomba_spot);
   server.on("/roombadock", handle_roomba_dock);
   server.on("/restart", handle_esp_restart);
 
@@ -529,6 +531,28 @@ void handle_roomba_start()
   delay(50);
   mySerial.write(135);
   Serial.println("I will clean master");
+  handle_root();
+}
+
+void handle_roomba_spot()
+{
+  mySerial.write(128);
+  delay(50);
+  mySerial.write(131);
+  delay(50);
+  mySerial.write(134);
+  Serial.println("Spot cleaning");
+  handle_root();
+}
+
+void handle_roomba_stop()
+{
+  mySerial.write(128);
+  delay(50);
+  mySerial.write(131);
+  delay(50);
+  mySerial.write(133);
+  Serial.println("STOP");
   handle_root();
 }
 
