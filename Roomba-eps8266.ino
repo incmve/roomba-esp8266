@@ -10,11 +10,12 @@
 #include "Base64.h"
 #include <FS.h>
 
-String roombotVersion = "0.3.7";
+String roombotVersion = "0.3.8";
 String WMode = "1";
 
 #define SERIAL_RX     D5  // pin for SoftwareSerial RX
 #define SERIAL_TX     D6  // pin for SoftwareSerial TX
+#define Wake_Pin      D1
 SoftwareSerial mySerial(SERIAL_RX, SERIAL_TX); // (RX, TX. inverted, buffer)
 
 
@@ -40,8 +41,8 @@ String formatBytes(size_t bytes) {
 }
 
 // WIFI
-String ssid    = "ssid";
-String password = "password";
+String ssid    = "Wireless AP";
+String password = "swamprat";
 String espName    = "Roombot";
 
 // webserver
@@ -92,7 +93,7 @@ String inputBodyStart   =  "<form action='' method='POST'><div class='panel pane
 String inputBodyName    =  "<div class='form-group'><div class='input-group'><span class='input-group-addon' id='basic-addon1'>";
 String inputBodyPOST    =  "</span><input type='text' name='";
 String inputBodyClose   =  "' class='form-control' aria-describedby='basic-addon1'></div></div>";
-String roombacontrol     =  "<a href='/roombastart'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-play' aria-hidden='true'></span> Start</button></a><a href='/roombastop'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-stop' aria-hidden='true'></span> Stop</button></a><a href='/roombaspot'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-cleaning' aria-hidden='true'></span> Spot</button></a><a href='/roombadock'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-home' aria-hidden='true'></span> Dock</button></a></div>";
+String roombacontrol     =  "<a href='/roombastart'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-play' aria-hidden='true'></span> Start</button></a><a href='/roombamax'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-play' aria-hidden='true'></span> Max Clean</button></a><a href='/roombastop'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-stop' aria-hidden='true'></span> Stop</button></a><a href='/roombaspot'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-cleaning' aria-hidden='true'></span> Spot</button></a><a href='/roombadock'<button type='button' class='btn btn-default'><span class='glyphicon glyphicon-home' aria-hidden='true'></span> Dock</button></a></div>";
 
 
 // ROOT page
@@ -131,6 +132,9 @@ void setup(void)
   mySerial.begin(115200);
   pinMode(SERIAL_RX, INPUT);
   pinMode(SERIAL_TX, OUTPUT);
+  pinMode(Wake_Pin, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(Wake_Pin,LOW);
   // Check if SPIFFS is OK
   if (!SPIFFS.begin())
   {
@@ -203,6 +207,7 @@ void setup(void)
   server.on("/filemanager_ajax", handle_filemanager_ajax);
   server.on("/delete", handleFileDelete);
   server.on("/roombastart", handle_roomba_start);
+  server.on("/roombamax", handle_roomba_max);
   server.on("/roombastop", handle_roomba_stop);
   server.on("/roombaspot", handle_roomba_spot);
   server.on("/roombadock", handle_roomba_dock);
@@ -522,8 +527,18 @@ void handle_filemanager_ajax()
   }
 }
 
+void handle_roomba_wake(){
+  digitalWrite(Wake_Pin, HIGH);
+  delay(100);
+  digitalWrite(Wake_Pin, LOW);
+  delay(500);
+  digitalWrite(Wake_Pin, HIGH);
+  delay(100);
+ }
+
 void handle_roomba_start()
 {
+  handle_roomba_wake();
   Serial.println("Starting");
   mySerial.write(128);
   delay(50);
@@ -534,8 +549,22 @@ void handle_roomba_start()
   handle_root();
 }
 
+void handle_roomba_max()
+{
+  handle_roomba_wake();
+  Serial.println("Starting");
+  mySerial.write(128);
+  delay(50);
+  mySerial.write(131);
+  delay(50);
+  mySerial.write(136);
+  Serial.println("Maximum cleaning");
+  handle_root();
+}
+
 void handle_roomba_spot()
 {
+  handle_roomba_wake();
   mySerial.write(128);
   delay(50);
   mySerial.write(131);
@@ -547,6 +576,7 @@ void handle_roomba_spot()
 
 void handle_roomba_stop()
 {
+  handle_roomba_wake();
   mySerial.write(128);
   delay(50);
   mySerial.write(131);
@@ -558,6 +588,7 @@ void handle_roomba_stop()
 
 void handle_roomba_dock()
 {
+  handle_roomba_wake();
   mySerial.write(128);
   delay(50);
   mySerial.write(131);
@@ -584,7 +615,7 @@ void handle_esp_charging() {
     Serial.println("..");
     Serial.print(charge);
     switch (charge) {
-    case 0:{ 
+    case 0:{
       //do something when var equals 1
             String data = String(charge);
      handle_esp_pimatic(data, chargevar);
@@ -611,13 +642,13 @@ void handle_esp_charging() {
       break;}
       case 5:{
       //do something when var equals 2
-         
+
             String data = String(charge);
             String variable = String(charge);
       handle_esp_pimatic(data, chargevar);
-      
+
       break;}
-    default: 
+    default:
       // if nothing else matches, do the default
       // default is optional
     break;
@@ -627,7 +658,7 @@ void handle_esp_charging() {
 }
 
 void handle_esp_distance() {
-  
+
   mySerial.write(142);
   delay(50);
   mySerial.write(19);
@@ -658,7 +689,7 @@ base64 encoder;
     Serial.println("connection failed");
     return;
   }
-  
+
   yourdata = "{\"type\": \"value\", \"valueOrExpression\": \"" + data + "\"}";
 
   client.print("PATCH /api/variables/");
@@ -673,7 +704,7 @@ base64 encoder;
   client.print(yourdata.length());
   client.print("\r\n\r\n");
   client.print(yourdata);
- 
+
 
   delay(500);
 
