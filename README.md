@@ -11,3 +11,5 @@ Use at your own risk!!
 
 Preview on YT
 https://www.youtube.com/watch?v=j58JWRCPJnU
+
+MQTT version but untested here: https://github.com/incmve/Roomba-esp8266-MQTT
